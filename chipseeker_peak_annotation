@@ -1,0 +1,93 @@
+BiocManager::install('ChIPseeker')
+library(ChIPseeker)
+#配置基因组注释信息，根据 ChIP-seq 试验的物种来选择
+#例如以人类基因组 hg38 版本为例，在网上下载 gff3 格式的基因组注释文件（GRCh38.gff3），通过 GenomicFeatures 包构建构建 TxDb 对象
+library(GenomicFeatures)
+BiocManager::install('txdbmaker')
+#genome <- makeTxDbFromGFF('GRCh38.gff3')
+genome <- txdbmaker::makeTxDbFromGFF('/data4/users/Qiuqoo/zjuatac/data_Delivery_20240625/watermelon_97103_v2.gene_model.gff')
+
+#除 makeTxDbFromGFF 外，还可以使用以下方法构建 TxDb 对象
+#makeTxDbFromUCSC，通过 UCSC 构建 TxDb
+#akeTxDbFromBiomart，通过 ensembl 构建 TxDb
+#makeTxDbFromGRanges，通过 GRanges 构建 TxDb
+
+#读取 bed 文件
+setwd("/data4/users/Qiuqoo/zjuatac/data_Delivery_20240625/macs2")
+Z009_8d_A1_peak <- readPeakFile('Z009-8d-A1_summits.bed')
+Z009_8d_A2_peak <- readPeakFile('Z009-8d-A2_summits.bed')
+
+Z011_8d_A1_peak <- readPeakFile('Z011-8d-A1_summits.bed')
+Z011_8d_A2_peak <- readPeakFile('Z011-8d-A2_summits.bed')
+
+ZJU009_13d_A1_peak <- readPeakFile('ZJU009-13d-A1_summits.bed')
+ZJU009_13d_A2_peak <- readPeakFile('ZJU009-13d-A2_summits.bed')
+
+ZJU011_13d_A1_peak <- readPeakFile('ZJU011-13d-A1_summits.bed')
+ZJU011_13d_A2_peak <- readPeakFile('ZJU011-13d-A2_summits.bed')
+
+#peaks 的基因组注释，详情 ?annotatePeak
+Z009_8d_A1_peakAnno <- annotatePeak(Z009_8d_A1_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+Z009_8d_A2_peakAnno <- annotatePeak(Z009_8d_A2_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+
+Z011_8d_A1_peakAnno <- annotatePeak(Z011_8d_A1_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+Z011_8d_A2_peakAnno <- annotatePeak(Z011_8d_A2_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+
+ZJU009_13d_A1_peakAnno <- annotatePeak(ZJU009_13d_A1_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+ZJU009_13d_A2_peakAnno <- annotatePeak(ZJU009_13d_A2_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+
+ZJU011_13d_A1_peakAnno <- annotatePeak(ZJU011_13d_A1_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+ZJU011_13d_A2_peakAnno <- annotatePeak(ZJU011_13d_A2_peak, tssRegion = c(-3000, 3000), TxDb = genome)
+
+#输出结果
+peak_list <- list(
+  Z009_8d_A1 = Z009_8d_A1_peakAnno,
+  Z009_8d_A2 = Z009_8d_A2_peakAnno,
+  Z011_8d_A1 = Z011_8d_A1_peakAnno,
+  Z011_8d_A2 = Z011_8d_A2_peakAnno,
+  ZJU009_13d_A1 = ZJU009_13d_A1_peakAnno,
+  ZJU009_13d_A2 = ZJU009_13d_A2_peakAnno,
+  ZJU011_13d_A1 = ZJU011_13d_A1_peakAnno,
+  ZJU011_13d_A2 = ZJU011_13d_A2_peakAnno
+)
+
+output_path <- "/data4/users/Qiuqoo/zjuatac/data_Delivery_20240625/chipseeker"
+
+lapply(names(peak_list), function(name) {
+  out_file <- paste0(output_path, "/", name, "_peakAnno.txt")
+  write.table(
+    as.data.frame(peak_list[[name]]),
+    file = out_file,
+    sep = "\t",
+    row.names = FALSE,
+    quote = FALSE
+  )
+  message("Saved: ", out_file)
+})
+
+# plotAnnoBar(peakAnno)
+# vennpie(peakAnno)
+# plotAnnoPie(peakAnno)
+# plotDistToTSS(peakAnno)
+# upsetplot(peakAnno, vennpie=TRUE)
+
+#将多个 bed 文件存储在一个 list 中，例如下面两个 bed 文件（peak1.bed 和 peak2.bed）
+# peak1 <- readPeakFile('peak1.bed')
+# peak2 <- readPeakFile('peak2.bed')
+# peaks <- list(peak1 = peak1, peak2 = peak2)
+
+#同样地，peak 的基因组注释，详情 ?annotatePeak
+# peakAnnoList <- lapply(peaks, annotatePeak, TxDb = genome, tssRegion = c(-3000, 3000), addFlankGeneInfo = TRUE, flankDistance = 5000)
+# 
+# #结果同样以 list 存储，从中分别指定输出结果
+# write.table(peakAnnoList[1], file = 'peak1.txt',sep = '\t', quote = FALSE, row.names = FALSE)
+# write.table(peakAnnoList[2], file = 'peak2.txt',sep = '\t', quote = FALSE, row.names = FALSE)
+# 
+# #这些可视化函数同样可以用来展示和比较多个注释结果
+# plotAnnoBar(peakAnnoList)
+# plotDistToTSS(peakAnnoList)
+# 
+# #此外 ChIPseeker 包还可用于两个 bed 文件中 peaks 的 overlap 分析，可用来评价蛋白功能的一致性，或者生物学重复样本间的一致性
+# #详情 ?enrichPeakOverlap，结果中 p 值越小，overlap 的程度越高
+# enrichPeakOverlap(queryPeak = peak1, targetPeak= peak2, TxDb = genome, pAdjustMethod = 'BH', nShuffle = 1000, chainFile = NULL, verbose = FALSE)
+
